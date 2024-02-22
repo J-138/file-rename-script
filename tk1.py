@@ -33,7 +33,7 @@ def check_dir():
 
     btn1.config(state='normal')
 
-    print(f'list of files in directory: {file_list}\n')
+    print(f'list of files in directory: {file_list}')
     lbl2.config(text = f'{eligible_files} file(s) eligible for renaming')
 
 def export_list_as_txt():
@@ -63,6 +63,9 @@ def export_list_as_txt():
 
 # renames file in dir, if the name exists, either delete it or skip renaming
 def rename(new_name, old_name, d_new_name, d_old_name):
+    renamed = True
+    msg= ''
+
     if not os.path.exists(new_name):
         os.rename(old_name, new_name)
 
@@ -71,11 +74,16 @@ def rename(new_name, old_name, d_new_name, d_old_name):
         os.rename(old_name, new_name)
 
     else:
-        print(f"File '{new_name}' already exists. Skipping file.")
+        dup_msg = f"File '{new_name}' already exists. Skipping file."
+        print(dup_msg)
+        msg = dup_msg
+        renamed = False
 
-    msg = f'Renamed {d_old_name} to {d_new_name}'
+    if renamed:
+        msg = f'Renamed {d_old_name} to {d_new_name}'
+
     print(msg)
-    return msg
+    return msg, renamed
 
 def rename_files():
     label_msg = ''
@@ -89,24 +97,28 @@ def rename_files():
             if r_str_upper in file_name_upper:
                 index_l = file_name_upper.index(r_str_upper)
                 index_r = index_l + len(r_str_upper)
-                new_file_name = file_name[0:index_l] + file_name[index_r:]
+                new_file_name = file_name[0:index_l] + replacement_str.get() + file_name[index_r:]
                 new_name = os.path.join(dir, new_file_name)
                 old_name = os.path.join(dir, file_name)
-                label_msg += rename(new_name=new_name, 
+                msg, renamed = rename(new_name=new_name, 
                                     old_name=old_name,
                                     d_new_name=new_file_name,
                                     d_old_name=file_name)
-                rename_count += 1
+                label_msg += msg
+                if renamed:
+                    rename_count += 1
 
         elif str_to_replace.get() in file_name and not ignore_cap.get():
-            new_name = os.path.join(dir, file_name.replace(str_to_replace.get(), ''))
+            new_name = os.path.join(dir, file_name.replace(str_to_replace.get(), replacement_str.get()))
             old_name = os.path.join(dir, file_name)
             new_file_name = file_name.replace(str_to_replace.get(), '')
-            label_msg += rename(new_name=new_name, 
-                                old_name=old_name,
-                                d_new_name=new_file_name,
-                                d_old_name=file_name)
-            rename_count += 1
+            msg, renamed = rename(new_name=new_name, 
+                                    old_name=old_name,
+                                    d_new_name=new_file_name,
+                                    d_old_name=file_name)
+            label_msg += msg
+            if renamed:
+                rename_count += 1
     
         else:
             print('error in rename_files')
@@ -130,7 +142,7 @@ def change_directory():
 
 def update_replace_lbl(var, index, mode):
     print(str_to_replace.get())
-    replaceInfoLbl.config(text=f'Replacing files that contain: \'{str_to_replace.get()}\'')
+    replaceInfoLbl.config(text=f'Replacing files that contain: \'{str_to_replace.get()}\' with \'{replacement_str.get()}\'')
     
 ###
 ### Widgets
@@ -152,6 +164,16 @@ entry1 = tk.Entry(root,
                   textvariable=str_to_replace,
                   width=gen_width,
                   justify='center')
+
+replacement_str = StringVar()
+replacement_str.set('')
+replacementStrEntry = tk.Entry(root,
+                               textvariable=replacement_str,
+                               width=gen_width,
+                               justify='center')
+
+replaceInfoLbl = tk.Label(root,
+                          text=f'Replacing files that contain: \'{str_to_replace.get()}\' with \'{replacement_str.get()}\'')
 
 dirSelectBtn = tk.Button(root,
                          text = 'Change directory',
@@ -175,9 +197,6 @@ lbl2 = tk.Label(root,
                 text = '',
                 wraplength=gen_width)
 
-replaceInfoLbl = tk.Label(root,
-                          text=f'Replacing files that contain: \'{str_to_replace.get()}\'')
-
 # optional settings
 ignore_cap = BooleanVar()
 delete_dups = BooleanVar()
@@ -199,6 +218,7 @@ deleteDupsCheck = tk.Checkbutton(root,
 # packing order
 lbl1.pack(padx=5)
 entry1.pack(padx=5)
+replacementStrEntry.pack(padx=5, pady=2)
 replaceInfoLbl.pack(padx=5)
 ignoreCapsCheck.pack(padx=5)
 deleteDupsCheck.pack(padx=5)
@@ -209,7 +229,7 @@ btn1.pack(pady=5)
 lbl2.pack(padx=5)
 
 str_to_replace.trace_add("write", update_replace_lbl)
-
+replacement_str.trace_add("write", update_replace_lbl)
 
 if __name__ == '__main__':
     root.mainloop()
