@@ -1,11 +1,12 @@
 import tkinter as tk
 import os
 from tkinter import BooleanVar, PhotoImage, StringVar, messagebox, filedialog
+import time
 
 root = tk.Tk()
 root.geometry('200x400')
 root.minsize(400,400)
-root.maxsize(400,800)
+root.maxsize(400,1080)
 root.title('File rename')
 
 global file_list
@@ -20,9 +21,17 @@ def check_dir():
     global file_list
     file_list = os.listdir(dir)
 
-    for file in file_list:
-        if str_to_replace.get() in file:
-            eligible_files += 1
+    if ignore_cap.get():
+        for file in file_list:
+            if str_to_replace.get().upper() in file.upper():
+                eligible_files += 1
+
+    else:
+        for file in file_list:
+            if str_to_replace.get() in file:
+                eligible_files += 1
+
+    btn1.config(state='normal')
 
     print(f'list of files in directory: {file_list}\n')
     lbl2.config(text = f'{eligible_files} file(s) eligible for renaming')
@@ -46,34 +55,68 @@ def export_list_as_txt():
 
     f = open(txt_name, 'a', encoding='utf-8')
 
-    for item in file_list:
+    for item in file_list:  
         f.write(item + '\n')
 
+    open_txt_name = os.path.join(os.getcwd(), txt_name)
+    os.startfile(open_txt_name)
+
+# renames file in dir, if the name exists, either delete it or skip renaming
+def rename(new_name, old_name, d_new_name, d_old_name):
+    if not os.path.exists(new_name):
+        os.rename(old_name, new_name)
+
+    elif os.path.exists(new_name) and delete_dups.get():
+        os.remove(new_name)
+        os.rename(old_name, new_name)
+
+    else:
+        print(f"File '{new_name}' already exists. Skipping file.")
+
+    msg = f'Renamed {d_old_name} to {d_new_name}'
+    print(msg)
+    return msg
+
 def rename_files():
-    label_msg = ""
+    label_msg = ''
     rename_count = 0
 
     for file_name in file_list:
-        if str_to_replace.get() in file_name:
+        if ignore_cap.get():
+            r_str_upper = str_to_replace.get().upper()
+            file_name_upper = file_name.upper()
+
+            if r_str_upper in file_name_upper:
+                index_l = file_name_upper.index(r_str_upper)
+                index_r = index_l + len(r_str_upper)
+                new_file_name = file_name[0:index_l] + file_name[index_r:]
+                new_name = os.path.join(dir, new_file_name)
+                old_name = os.path.join(dir, file_name)
+                label_msg += rename(new_name=new_name, 
+                                    old_name=old_name,
+                                    d_new_name=new_file_name,
+                                    d_old_name=file_name)
+                rename_count += 1
+
+        elif str_to_replace.get() in file_name and not ignore_cap.get():
             new_name = os.path.join(dir, file_name.replace(str_to_replace.get(), ''))
             old_name = os.path.join(dir, file_name)
-
-            if not os.path.exists(new_name):
-                os.rename(old_name, new_name)
-            elif os.path.exists(new_name) and delete_dups.get():
-                os.remove(new_name)
-                os.rename(old_name, new_name)
-            else:
-                print(f"File '{new_name}' already exists. Skipping file.")
-                continue
-
-            print(f'Renamed {old_name} to {new_name}')
-            label_msg += f'Renamed {old_name} to {new_name} \n'
+            new_file_name = file_name.replace(str_to_replace.get(), '')
+            label_msg += rename(new_name=new_name, 
+                                old_name=old_name,
+                                d_new_name=new_file_name,
+                                d_old_name=file_name)
             rename_count += 1
+    
+        else:
+            print('error in rename_files')
 
-    print(f'Renamed {rename_count} file(s)')
-    messagebox.showinfo("Done", f"Renamed {rename_count} files")
-    lbl2.config(text = label_msg)
+    btn1.config(state='disabled')
+
+    msg = f'Renamed {rename_count} file(s)'
+    print(msg)
+    lbl2.config(text=label_msg)
+    messagebox.showinfo('Done', msg)
 
 # changes directory where renaming happens
 def change_directory():
@@ -125,7 +168,8 @@ downloadBtn = tk.Button(root,
 btn1 = tk.Button(root,
                  text = 'Rename file(s)',
                  activeforeground = "yellow",
-                 command = rename_files)
+                 command = rename_files,
+                 state='disabled')
 
 lbl2 = tk.Label(root,
                 text = '',
@@ -167,4 +211,5 @@ lbl2.pack(padx=5)
 str_to_replace.trace_add("write", update_replace_lbl)
 
 
-root.mainloop()
+if __name__ == '__main__':
+    root.mainloop()
