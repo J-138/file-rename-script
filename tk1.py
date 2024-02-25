@@ -1,7 +1,6 @@
 import tkinter as tk
 import os
-from tkinter import BooleanVar, PhotoImage, StringVar, messagebox, filedialog
-import time
+from tkinter import INSERT, BooleanVar, PhotoImage, StringVar, messagebox, filedialog
 
 root = tk.Tk()
 root.geometry('200x400')
@@ -9,9 +8,14 @@ root.minsize(400,400)
 root.maxsize(400,1080)
 root.title('File rename')
 
+try:
+    app_icon = tk.PhotoImage(file='./app_icon.png')
+    root.iconphoto(True, app_icon)
+except tk.TclError:
+    print("Image file not found or invalid")
+
 global file_list
 global dir
-
 file_list = []
 dir = './'
 
@@ -34,9 +38,11 @@ def check_dir():
     btn1.config(state='normal')
 
     print(f'list of files in directory: {file_list}')
-    lbl2.config(text = f'{eligible_files} file(s) eligible for renaming')
+    bottomText.delete(1.0, tk.END)
+    bottomText.insert(1.0, f'{eligible_files} file(s) eligible for renaming')
 
 def export_list_as_txt():
+    file_list = os.listdir(dir)
     txt_name = './files_list.txt'
     count = 0
 
@@ -80,7 +86,7 @@ def rename(new_name, old_name, d_new_name, d_old_name):
         renamed = False
 
     if renamed:
-        msg = f'Renamed {d_old_name} to {d_new_name}'
+        msg = f'Renamed: {d_old_name} -> {d_new_name}\n'
 
     print(msg)
     return msg, renamed
@@ -89,6 +95,7 @@ def rename_files():
     label_msg = ''
     rename_count = 0
 
+    # renames based on user options, could be made more elegant i think
     for file_name in file_list:
         if ignore_cap.get():
             r_str_upper = str_to_replace.get().upper()
@@ -100,37 +107,40 @@ def rename_files():
                 new_file_name = file_name[0:index_l] + replacement_str.get() + file_name[index_r:]
                 new_name = os.path.join(dir, new_file_name)
                 old_name = os.path.join(dir, file_name)
-                msg, renamed = rename(new_name=new_name, 
-                                    old_name=old_name,
-                                    d_new_name=new_file_name,
-                                    d_old_name=file_name)
+                msg, renamed = rename(
+                    new_name=new_name, 
+                    old_name=old_name,
+                    d_new_name=new_file_name,
+                    d_old_name=file_name
+                )
                 label_msg += msg
-                if renamed:
-                    rename_count += 1
+                if renamed: rename_count += 1
 
         elif str_to_replace.get() in file_name and not ignore_cap.get():
             new_name = os.path.join(dir, file_name.replace(str_to_replace.get(), replacement_str.get()))
             old_name = os.path.join(dir, file_name)
             new_file_name = file_name.replace(str_to_replace.get(), '')
-            msg, renamed = rename(new_name=new_name, 
-                                    old_name=old_name,
-                                    d_new_name=new_file_name,
-                                    d_old_name=file_name)
+            msg, renamed = rename(
+                new_name=new_name, 
+                old_name=old_name,
+                d_new_name=new_file_name,
+                d_old_name=file_name
+            )
             label_msg += msg
-            if renamed:
-                rename_count += 1
+            if renamed: rename_count += 1
     
         else:
             print('error in rename_files')
 
+    # disables renaming button after renaming is done
     btn1.config(state='disabled')
 
-    msg = f'Renamed {rename_count} file(s)'
     print(msg)
-    lbl2.config(text=label_msg)
+    msg = f'Renamed {rename_count} file(s)'
+    bottomText.delete(1.0, tk.END)
+    bottomText.insert(1.0, label_msg)
     messagebox.showinfo('Done', msg)
 
-# changes directory where renaming happens
 def change_directory():
     global dir
     new_dir = filedialog.askdirectory(initialdir= './',
@@ -144,13 +154,10 @@ def update_replace_lbl(var, index, mode):
     print(str_to_replace.get())
     replaceInfoLbl.config(text=f'Replacing files that contain: \'{str_to_replace.get()}\' with \'{replacement_str.get()}\'')
     
-###
-### Widgets
-###
+#/ / / / / / / / / /
+#      WIDGETS
+#/ / / / / / / / / /
 gen_width = 300
-
-window_width = root.winfo_width()
-print('window width ' + str(window_width))
 
 lbl1 = tk.Label(root,
                 text=f'Current directory: {dir}',
@@ -215,19 +222,37 @@ deleteDupsCheck = tk.Checkbutton(root,
                                  onvalue=True,
                                  offvalue=False)
 
+# scrollable text
+fill_str = StringVar()
+fill_str = ''.join(['text text text text text text ' for i in range(1, 50)])
+
+bottomText = tk.Text(root, 
+                     wrap='char', 
+                     height=10, 
+                     width=gen_width)
+
+bottomText.insert(INSERT, fill_str)
+
+textScroll = tk.Scrollbar(root, 
+                          command=bottomText.yview)   
+
+bottomText.config(yscrollcommand=textScroll.set)
+
 # packing order
 lbl1.pack(padx=5)
 entry1.pack(padx=5)
 replacementStrEntry.pack(padx=5, pady=2)
 replaceInfoLbl.pack(padx=5)
 ignoreCapsCheck.pack(padx=5)
-deleteDupsCheck.pack(padx=5)
+deleteDupsCheck.pack(padx=5)    
 dirSelectBtn.pack(pady=5)
 checkBtn.pack(pady=5)
 downloadBtn.pack(pady=5)
 btn1.pack(pady=5)
-lbl2.pack(padx=5)
+bottomText.pack(padx=5, pady=5, side='left', fill='both')
+textScroll.pack(side='left') 
 
+# tracks the entry widget variables to update label
 str_to_replace.trace_add("write", update_replace_lbl)
 replacement_str.trace_add("write", update_replace_lbl)
 
