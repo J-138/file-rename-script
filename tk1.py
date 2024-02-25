@@ -207,7 +207,6 @@ lbl2 = tk.Label(root,
 # optional settings
 ignore_cap = BooleanVar()
 delete_dups = BooleanVar()
-ignore_img = PhotoImage(file='./caps-lock.png')
 
 ignoreCapsCheck = tk.Checkbutton(root,
                                 text='Ignore capitalization',
